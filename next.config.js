@@ -4,7 +4,7 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs']
   },
   images: {
-    domains: ['localhost', 'your-production-domain.com'],
+    domains: ['localhost'],
     remotePatterns: [
       {
         protocol: 'https',
