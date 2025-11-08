@@ -13,9 +13,10 @@
     scroll-behavior: smooth;
   }
 
-  body {
-    font-family: var(--font-inter);
-  }
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+}
 
   .font-arabic {
     font-family: var(--font-amiri);
