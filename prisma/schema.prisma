@@ -41,6 +41,10 @@ model User {
   
   // Event Attendance
   eventAttendances EventAttendee[]
+  
+  // Chat
+  chatParticipants ChatParticipant[]
+  sentMessages     Message[]
 
   @@map("users")
 }
