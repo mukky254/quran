@@ -38,6 +38,9 @@ model User {
   followers     Follow[]  @relation("Follower")
   following     Follow[]  @relation("Following")
   groups        GroupMember[]
+  
+  // Event Attendance
+  eventAttendances EventAttendee[]
 
   @@map("users")
 }
@@ -95,7 +98,7 @@ model PrayerTime {
   location    String?
   latitude    Float?
   longitude   Float?
-  method      Int?     @default(2) // Calculation method
+  method      Int?     @default(2)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -116,7 +119,7 @@ model Mosque {
   email       String?
   website     String?
   description String?
-  amenities   String[] // WiFi, Parking, etc.
+  amenities   String[]
   jummahTimes String[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -135,7 +138,7 @@ model QuranProgress {
   ayahFrom    Int
   ayahTo      Int
   completed   Boolean  @default(false)
-  duration    Int?     // in minutes
+  duration    Int?
   date        DateTime @default(now())
   createdAt   DateTime @default(now())
 
@@ -148,9 +151,9 @@ model QuranProgress {
 model Bookmark {
   id          String   @id @default(cuid())
   userId      String
-  type        BookmarkType // QURAN, HADITH, ARTICLE, etc.
+  type        BookmarkType
   itemId      String
-  itemData    Json?    // Flexible data storage
+  itemData    Json?
   notes       String?
   createdAt   DateTime @default(now())
 
@@ -166,7 +169,7 @@ model Note {
   content     String
   tags        String[]
   isPrivate   Boolean  @default(true)
-  relatedType String?  // QURAN, HADITH, etc.
+  relatedType String?
   relatedId   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -185,7 +188,7 @@ model Goal {
   type        GoalType
   target      Int
   current     Int        @default(0)
-  unit        String     // pages, minutes, days, etc.
+  unit        String
   deadline    DateTime?
   completed   Boolean    @default(false)
   createdAt   DateTime   @default(now())
@@ -203,13 +206,13 @@ model Post {
   content     String
   image       String?
   tags        String[]
-  likes       Like[]
-  comments    Comment[]
   isPublic    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes       Like[]
+  comments    Comment[]
 
   @@map("posts")
 }
@@ -219,11 +222,11 @@ model Comment {
   userId      String
   postId      String
   content     String
-  likes       Like[]
   createdAt   DateTime @default(now())
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  likes       Like[]
 
   @@map("comments")
 }
@@ -332,7 +335,7 @@ model Donation {
   currency    String      @default("USD")
   cause       String
   isRecurring Boolean     @default(false)
-  frequency   String?     // monthly, yearly
+  frequency   String?
   isAnonymous Boolean     @default(false)
   status      DonationStatus @default(COMPLETED)
   createdAt   DateTime    @default(now())
@@ -340,6 +343,93 @@ model Donation {
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("donations")
+}
+
+// Additional models for missing features
+model Activity {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  content   String
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("activities")
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String
+  icon        String
+  unlockedAt  DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("achievements")
+}
+
+model Chat {
+  id        String   @id @default(cuid())
+  type      String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  participants ChatParticipant[]
+  messages     Message[]
+  
+  @@map("chats")
+}
+
+model ChatParticipant {
+  id        String   @id @default(cuid())
+  userId    String
+  chatId    String
+  joinedAt  DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, chatId])
+  @@map("chat_participants")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  chatId    String
+  senderId  String
+  content   String
+  type      String   @default("text")
+  isRead    Boolean  @default(false)
+  isDelivered Boolean @default(false)
+  createdAt DateTime @default(now())
+  
+  chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  
+  @@map("messages")
+}
+
+model Hadith {
+  id        String   @id @default(cuid())
+  collection String
+  book       String
+  hadithNumber String
+  arabic     String
+  english    String
+  narrator   String
+  translation String
+  grade      String
+  explanation String?
+  topics     String[]
+  likes      Int     @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  @@map("hadiths")
 }
 
 // Enums
