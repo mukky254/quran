@@ -1,0 +1,390 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  username      String?   @unique
+  image         String?
+  bio           String?
+  location      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Authentication
+  accounts      Account[]
+  sessions      Session[]
+
+  // User Data
+  prayerTimes   PrayerTime[]
+  quranProgress QuranProgress[]
+  bookmarks     Bookmark[]
+  notes         Note[]
+  goals         Goal[]
+  donations     Donation[]
+  posts         Post[]
+  comments      Comment[]
+
+  // Social
+  followers     Follow[]  @relation("Follower")
+  following     Follow[]  @relation("Following")
+  groups        GroupMember[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// Prayer Times & Location
+model PrayerTime {
+  id          String   @id @default(cuid())
+  userId      String
+  date        DateTime
+  fajr        String
+  sunrise     String
+  dhuhr       String
+  asr         String
+  maghrib     String
+  isha        String
+  location    String?
+  latitude    Float?
+  longitude   Float?
+  method      Int?     @default(2) // Calculation method
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("prayer_times")
+}
+
+model Mosque {
+  id          String   @id @default(cuid())
+  name        String
+  address     String
+  city        String
+  country     String
+  latitude    Float
+  longitude   Float
+  phone       String?
+  email       String?
+  website     String?
+  description String?
+  amenities   String[] // WiFi, Parking, etc.
+  jummahTimes String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  events      Event[]
+
+  @@map("mosques")
+}
+
+// Quran & Islamic Content
+model QuranProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  surahNumber Int
+  surahName   String
+  ayahFrom    Int
+  ayahTo      Int
+  completed   Boolean  @default(false)
+  duration    Int?     // in minutes
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, surahNumber, date])
+  @@map("quran_progress")
+}
+
+model Bookmark {
+  id          String   @id @default(cuid())
+  userId      String
+  type        BookmarkType // QURAN, HADITH, ARTICLE, etc.
+  itemId      String
+  itemData    Json?    // Flexible data storage
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("bookmarks")
+}
+
+model Note {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  content     String
+  tags        String[]
+  isPrivate   Boolean  @default(true)
+  relatedType String?  // QURAN, HADITH, etc.
+  relatedId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notes")
+}
+
+// Learning & Progress
+model Goal {
+  id          String     @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  type        GoalType
+  target      Int
+  current     Int        @default(0)
+  unit        String     // pages, minutes, days, etc.
+  deadline    DateTime?
+  completed   Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("goals")
+}
+
+// Community & Social
+model Post {
+  id          String   @id @default(cuid())
+  userId      String
+  content     String
+  image       String?
+  tags        String[]
+  likes       Like[]
+  comments    Comment[]
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("posts")
+}
+
+model Comment {
+  id          String   @id @default(cuid())
+  userId      String
+  postId      String
+  content     String
+  likes       Like[]
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String?
+  commentId String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId, commentId])
+  @@map("likes")
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower    User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@map("follows")
+}
+
+// Groups & Events
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  image       String?
+  isPublic    Boolean  @default(true)
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     GroupMember[]
+  events      Event[]
+  posts       Post[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  userId    String
+  groupId   String
+  role      GroupRole @default(MEMBER)
+  joinedAt  DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@map("group_members")
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  type        EventType
+  startDate   DateTime
+  endDate     DateTime?
+  location    String?
+  mosqueId    String?
+  groupId     String?
+  createdBy   String
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  mosque      Mosque?  @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  group       Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  attendees   EventAttendee[]
+
+  @@map("events")
+}
+
+model EventAttendee {
+  id        String   @id @default(cuid())
+  userId    String
+  eventId   String
+  status    AttendeeStatus @default(GOING)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+  @@map("event_attendees")
+}
+
+// Charity & Donations
+model Donation {
+  id          String      @id @default(cuid())
+  userId      String
+  amount      Float
+  currency    String      @default("USD")
+  cause       String
+  isRecurring Boolean     @default(false)
+  frequency   String?     // monthly, yearly
+  isAnonymous Boolean     @default(false)
+  status      DonationStatus @default(COMPLETED)
+  createdAt   DateTime    @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("donations")
+}
+
+// Enums
+enum BookmarkType {
+  QURAN
+  HADITH
+  ARTICLE
+  VIDEO
+  PRAYER
+  OTHER
+}
+
+enum GoalType {
+  QURAN_READING
+  PRAYER
+  FASTING
+  CHARITY
+  LEARNING
+  DHIKR
+}
+
+enum GroupRole {
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum EventType {
+  LECTURE
+  WORKSHOP
+  COMMUNITY
+  CHARITY
+  PRAYER
+  OTHER
+}
+
+enum AttendeeStatus {
+  GOING
+  INTERESTED
+  NOT_GOING
+}
+
+enum DonationStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
